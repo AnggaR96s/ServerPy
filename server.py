@@ -2,10 +2,11 @@ import asyncio
 import logging
 import requests
 import platform
+import psutil
+from datetime import datetime, timedelta
 from telethon.sync import TelegramClient, events
 from telethon.tl.custom.button import Button
-from datetime import datetime, timedelta
-import psutil
+
 
 # Configure logging
 logging.basicConfig(
@@ -38,6 +39,7 @@ else:
 logger.info("Bot started and running...")
 
 
+# Get uptime info
 def get_system_uptime():
     boot_time_timestamp = psutil.boot_time()
     current_time = datetime.now().timestamp()
@@ -57,74 +59,61 @@ def get_public_ip():
         return None
 
 
-# Function to get server status information
-def get_server_status():
-    cpu_usage = psutil.cpu_percent(interval=1)
-    ram_info = psutil.virtual_memory()
-    disk_info = psutil.disk_usage("/")
-    network_info = psutil.net_io_counters()
-
-    server_info = (
-        f"IP Address: {public_ip}\n"
-        f"CPU Usage: {cpu_usage:.2f}%\n"
-        f"RAM Usage: {ram_info.used / (1024 ** 3):.2f} GB / {ram_info.total / (1024 ** 3):.2f} GB\n"
-        f"Disk Usage: {disk_info.used / (1024 ** 3):.2f} GB / {disk_info.total / (1024 ** 3):.2f} GB\n"
-        f"Upload: {network_info.bytes_sent / (1024 ** 3):.2f} GB\n"
-        f"Download: {network_info.bytes_recv / (1024 ** 3):.2f} GB\n"
-    )
-
-    return server_info
-
-
-def get_system_info():
-    # CPU Count
-    cpu_count_physical = psutil.cpu_count(logical=False)
-    cpu_count_logical = psutil.cpu_count(logical=True)
-    cpu_count_str = (
-        f"\nCPU Count: {cpu_count_physical} physical, {cpu_count_logical} logical"
-    )
-
-    # CPU Frequency
-    cpu_frequency = psutil.cpu_freq()
-    if cpu_frequency is not None:
-        cpu_freq_str = f"CPU Frequency:\n    Current: {cpu_frequency.current:.2f} MHz\n    Minimum: {cpu_frequency.min:.2f} MHz\n    Maximum: {cpu_frequency.max:.2f} MHz\n"
-    else:
-        cpu_freq_str = "CPU Frequency: Information not available\n"
-
-    # Network Information
-    network_info = psutil.net_if_stats()
-    network_info_str = "Network Info:\n"
-    for interface, stats in network_info.items():
-        network_info_str += f"    Interface: {interface}\n        Speed: {stats.speed / 10 ** 6:.2f} Mbps\n        Is Up: {stats.isup}\n"
-    network_info_str += ""
-
-    # Combine all the information
-    system_info = f"{cpu_count_str}\n{cpu_freq_str}{network_info_str}"
-    return system_info
-
-
-# Function to get server status information
-def get_server_status():
-    cpu_usage = psutil.cpu_percent(interval=1)
-    ram_info = psutil.virtual_memory()
-    disk_info = psutil.disk_usage("/")
-    network_info = psutil.net_io_counters()
-    system_info = get_system_info()
-
-    server_info = (
-        f"IP Address: {public_ip}\n"
-        f"CPU Usage: {cpu_usage:.2f}%\n"
-        f"RAM Usage: {ram_info.used / (1024 ** 3):.2f} GB / {ram_info.total / (1024 ** 3):.2f} GB\n"
-        f"Disk Usage: {disk_info.used / (1024 ** 3):.2f} GB / {disk_info.total / (1024 ** 3):.2f} GB\n"
-        f"Upload: {network_info.bytes_sent / (1024 ** 3):.2f} GB\n"
-        f"Download: {network_info.bytes_recv / (1024 ** 3):.2f} GB\n"
-        f"{system_info}\n"
-    )
-
-    return server_info
-
-
 public_ip = get_public_ip()
+
+
+# Get CPU information
+cpu_usage = psutil.cpu_percent(interval=1)
+cpu_info = platform.processor()
+cpu_cores = psutil.cpu_count(logical=False)
+cpu_count = psutil.cpu_count(logical=True)
+cpu_count_str = f"{cpu_cores} physical, {cpu_count} logical"
+cpu_freq = psutil.cpu_freq().current
+
+# Get memory information
+memory = psutil.virtual_memory()
+total_memory = memory.total // (1024**2)  # Convert to MiB
+
+# Get OS information
+os_info = platform.platform()
+kernel_version = platform.release()
+
+
+# Get hostname
+hostname = platform.node()
+
+# Get disk Info
+disk_info = psutil.disk_usage("/")
+
+# Get RAM info
+ram_info = psutil.virtual_memory()
+
+# Get network information
+network_info = psutil.net_if_stats()
+network_info_str = "\n"
+for interface, stats in network_info.items():
+    network_info_str += f"    Interface: {interface}\n        Speed: {stats.speed / 10 ** 6:.2f} Mbps\n        Is Up: {stats.isup}\n"
+network_info_str += ""
+
+# Generate the output
+uptime = get_system_uptime()
+output = "**System Info**\n"
+output += "**-----------**\n"
+output += f"**IP Address** `{public_ip}`\n"
+output += f"**Processor** `{cpu_info}`\n"
+output += f"**CPU Usage** `{cpu_usage:.2f}%`\n"
+output += f"**CPU Cores** `{cpu_count_str}`\n"
+output += f"**CPU Freq** `@{cpu_freq:.3f} MHz`\n"
+output += f"**Disk Usage** `{disk_info.used / (1024 ** 3):.2f} GB / {disk_info.total / (1024 ** 3):.2f} GB`\n"
+output += f"**Memory** `{total_memory} MiB`\n"
+output += f"**RAM Usage** `{ram_info.used / (1024 ** 3):.2f} GB / {ram_info.total / (1024 ** 3):.2f} GB`\n"
+output += f"**Swap** `{psutil.swap_memory().total // (1024 ** 2)} MiB`\n"
+output += f"**Network** `{network_info_str}`"
+output += f"**Uptime** `{uptime}`\n\n"
+output += f"**OS** `{os_info}`\n"
+output += f"**Arch** `{platform.architecture()[0]} (64 Bit)`\n"
+output += f"**Kernel** `{kernel_version}`\n"
+output += f"**Hostname** `{hostname}`\n"
 
 
 # Event handlers
@@ -146,7 +135,7 @@ async def start_handler(event):
 
 @client.on(events.NewMessage(pattern="/status"))
 async def status_handler(event):
-    server_info = get_server_status()
+    uptime = get_system_uptime()
     refresh_button = Button.inline("Refresh", b"refresh")
     info_button = Button.inline("Info", b"info")
     help_button = Button.inline("Help", b"help")
@@ -154,7 +143,7 @@ async def status_handler(event):
 
     buttons = [[refresh_button, info_button], [help_button, delete_button]]
 
-    sent_message = await event.respond(server_info, buttons=buttons)
+    sent_message = await event.respond(output, buttons=buttons)
     sent_messages[event.chat_id] = sent_message
 
 
@@ -191,14 +180,13 @@ async def help_handler(event):
 
 
 async def refresh_handler(event):
-    server_info = get_server_status()
     refresh_button = Button.inline("Refresh", b"refresh")
     info_button = Button.inline("Info", b"info")
     help_button = Button.inline("Help", b"help")
     delete_button = Button.inline("Delete", b"delete")
 
     current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    server_info_with_timestamp = f"{server_info}\n\nLast Refreshed: {current_timestamp}"
+    server_info_with_timestamp = f"{output}\n\nLast Refreshed: {current_timestamp}"
 
     await event.edit(
         server_info_with_timestamp,
