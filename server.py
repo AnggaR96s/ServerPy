@@ -181,13 +181,12 @@ async def help_handler(event):
 
     refresh_button = Button.inline("Home", b"refresh")
     info_button = Button.inline("Info", b"info")
-    help_button = Button.inline("Help", b"help")
     delete_button = Button.inline("Delete", b"delete")
 
     [[refresh_button, info_button], [delete_button]]
 
     await event.edit(
-        help_text, buttons=[[refresh_button, info_button], [help_button, delete_button]]
+        help_text, buttons=[[refresh_button, info_button], [delete_button]]
     )
 
 
