@@ -129,8 +129,27 @@ async def start_handler(event):
     x = await event.respond(
         start_text, buttons=[[info_button], [help_button, delete_button]]
     )
-    await asyncio.sleep(5)
+    await asyncio.sleep(30)
     await x.delete()
+
+
+@client.on(events.InlineQuery)
+async def inline_query_handler(event):
+    query = event.text.strip()
+    if query.startswith("start"):
+        start_text = f"Welcome to the server status bot! Use the /status command to get server information."
+        refresh_button = Button.inline("Status", b"refresh")
+        info_button = Button.inline("Info", b"info")
+        help_button = Button.inline("Help", b"help")
+        delete_button = Button.inline("Delete", b"delete")
+
+        result = await event.builder.article(
+            title="Server Status Bot",
+            description="Start the bot",
+            text=start_text,
+            buttons=[[refresh_button, info_button], [help_button, delete_button]]
+        )
+        await event.answer([result])
 
 
 @client.on(events.NewMessage(pattern="/status"))
@@ -145,6 +164,26 @@ async def status_handler(event):
 
     sent_message = await event.respond(output, buttons=buttons)
     sent_messages[event.chat_id] = sent_message
+
+@client.on(events.InlineQuery)
+async def inline_query_handler(event):
+    query = event.text.strip()
+    if query == "status":
+        uptime = get_system_uptime()
+        refresh_button = Button.inline("Refresh", b"refresh")
+        info_button = Button.inline("Info", b"info")
+        help_button = Button.inline("Help", b"help")
+        delete_button = Button.inline("Delete", b"delete")
+
+        buttons = [[refresh_button, info_button], [help_button, delete_button]]
+
+        result = await event.builder.article(
+            title="Status Info",
+            description="Showserver status info.",
+            text=output,
+            buttons=buttons
+        )
+        await event.answer([result])
 
 
 @client.on(events.CallbackQuery())
