@@ -1,4 +1,4 @@
-# ServerPy - Telegram Server Status Bot
+# ServerPy - Server Status Telegram Bot
 
 ServerPy is a Python script that creates a Telegram bot for monitoring and displaying real-time server status information. This script utilizes the Telethon library to interact with the Telegram API and provides insights into CPU usage, RAM usage, disk usage, network activity, and system information.
 
