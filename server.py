@@ -81,11 +81,23 @@ def get_system_info_output():
     # Get hostname
     hostname = platform.node()
 
-    # Get disk Info
+    # Get disk usage information and calculate percentage
     disk_info = psutil.disk_usage("/")
+    disk_total = disk_info.total / (1024 ** 3)  # Convert to GB
+    disk_used = disk_info.used / (1024 ** 3)  # Convert to GB
+    disk_percent = (disk_used / disk_total) * 100  # Disk usage percentage
 
     # Get RAM info
     ram_info = psutil.virtual_memory()
+    ram_total = ram_info.total / (1024 ** 3)  # Convert to GB
+    ram_used = ram_info.used / (1024 ** 3)  # Convert to GB
+    ram_percent = ram_info.percent  # RAM usage percentage
+
+    # Get swap memory info and percentage
+    swap_info = psutil.swap_memory()
+    swap_total = swap_info.total / (1024 ** 3)  # Convert to GB
+    swap_used = swap_info.used / (1024 ** 3)  # Convert to GB
+    swap_percent = swap_info.percent  # Swap memory usage percentage
 
     # Get network information
     network_info = psutil.net_if_stats()
@@ -103,10 +115,10 @@ def get_system_info_output():
     output += f"**CPU Usage** `{cpu_usage}%`\n"
     output += f"**CPU Cores** `{cpu_count_str}`\n"
     output += f"**CPU Freq** `@{cpu_freq:.3f} MHz`\n"
-    output += f"**Disk Usage** `{disk_info.used / (1024 ** 3):.2f} GB / {disk_info.total / (1024 ** 3):.2f} GB`\n"
+    output += f"**Disk Usage** `{disk_used:.2f} GB / {disk_total:.2f} GB ({disk_percent:.2f}%)`\n"
     output += f"**Memory** `{total_memory} MiB`\n"
-    output += f"**RAM Usage** `{ram_info.used / (1024 ** 3):.2f} GB / {ram_info.total / (1024 ** 3):.2f} GB`\n"
-    output += f"**Swap** `{psutil.swap_memory().total // (1024 ** 2)} MiB`\n"
+    output += f"**RAM Usage** `{ram_used:.2f} GB / {ram_total:.2f} GB ({ram_percent}%)`\n"
+    output += f"**Swap** `{swap_used:.2f} GB / {swap_total:.2f} GB ({swap_percent}%)`\n"
     output += f"**Network** `{network_info_str}`"
     output += f"**Uptime** `{uptime_str}`\n\n"
     output += f"**OS** `{os_info}`\n"
