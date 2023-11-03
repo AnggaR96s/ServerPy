@@ -60,13 +60,15 @@ EOF
 read -p "Enter your API_ID: " API_ID
 read -p "Enter your API_HASH: " API_HASH
 read -p "Enter your BOT_TOKEN: " BOT_TOKEN
+read -p "Enter allowed user IDs (comma-separated): " ALLOWED_USERS
 
-# Write config.env file
+# Write config.env file with ALLOWED_USERS unquoted
 CONFIG_FILE="$REPO_DIR/config.env"
 cat <<EOF > "$CONFIG_FILE"
 API_ID='$API_ID'
 API_HASH='$API_HASH'
 BOT_TOKEN='$BOT_TOKEN'
+ALLOWED_USERS=$ALLOWED_USERS
 EOF
 
 # Set appropriate permissions for the config.env file

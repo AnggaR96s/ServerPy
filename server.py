@@ -7,14 +7,13 @@ from datetime import datetime, timedelta
 from telethon.sync import TelegramClient, events
 from telethon.tl.custom.button import Button
 
-
 # Configure logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# Read API_ID, API_HASH, and BOT_TOKEN from config.env
+# Read API_ID, API_HASH, BOT_TOKEN, and ALLOWED_USERS from config.env
 with open("config.env") as f:
     for line in f:
         if line.startswith("API_ID"):
@@ -23,6 +22,8 @@ with open("config.env") as f:
             API_HASH = line.strip().split("=")[1].strip().replace("'", "")
         elif line.startswith("BOT_TOKEN"):
             BOT_TOKEN = line.strip().split("=")[1].strip().replace("'", "")
+        elif line.startswith("ALLOWED_USERS"):
+            ALLOWED_USERS = line.strip().split("=")[1].strip().replace("'", "").split(',')
 
 # Dictionary to store sent messages per chat
 sent_messages = {}
@@ -37,7 +38,6 @@ else:
     client.start()
 
 logger.info("Bot started and running...")
-
 
 def get_system_uptime():
     boot_time_timestamp = psutil.boot_time()
@@ -128,79 +128,60 @@ def get_system_info_output():
 
     return output
 
-
-# Event handlers
 @client.on(events.NewMessage(pattern="/start"))
 async def start_handler(event):
-    info_button = Button.inline("Info", b"info")
-    help_button = Button.inline("Help", b"help")
-    delete_button = Button.inline("Delete", b"delete")
-
-    [[info_button], [delete_button]]
-
-    start_text = f"Welcome to the server status bot! Use the /status command to get server information."
-    x = await event.respond(
-        start_text, buttons=[[info_button], [help_button, delete_button]]
-    )
-    await asyncio.sleep(30)
-    await x.delete()
-
-
-@client.on(events.InlineQuery)
-async def inline_query_handler(event):
-    query = event.text.strip()
-    if query.startswith("start"):
-        start_text = f"Welcome to the server status bot! Use the /status command to get server information."
-        refresh_button = Button.inline("Status", b"refresh")
+    if str(event.sender_id) in ALLOWED_USERS:
         info_button = Button.inline("Info", b"info")
         help_button = Button.inline("Help", b"help")
-        delete_button = Button.inline("Delete", b"delete")
-
-        result = await event.builder.article(
-            title="Server Status Bot",
-            description="Start the bot",
-            text=start_text,
-            buttons=[[refresh_button, info_button], [help_button, delete_button]]
-        )
-        await event.answer([result])
-
+        [[info_button], [help_button]]
+        start_text = f"Welcome to the server status bot! Use the /status command to get server information."
+        x = await event.respond(start_text, buttons=[[info_button], [help_button]])
+        await asyncio.sleep(30)
+        await x.delete()
+    else:
+        user_id = event.sender_id
+        await client.send_message(user_id, "You are not allowed to use this bot.")
 
 @client.on(events.NewMessage(pattern="/status"))
 async def status_handler(event):
-    uptime = get_system_uptime()
-    system_info_output = get_system_info_output()
-    refresh_button = Button.inline("Refresh", b"refresh")
-    info_button = Button.inline("Info", b"info")
-    help_button = Button.inline("Help", b"help")
-    delete_button = Button.inline("Delete", b"delete")
-
-    buttons = [[refresh_button, info_button], [help_button, delete_button]]
-
-    sent_message = await event.respond(system_info_output, buttons=buttons)
-    sent_messages[event.chat_id] = sent_message
-
-
-@client.on(events.InlineQuery)
-async def inline_query_handler(event):
-    query = event.text.strip()
-    if query == "status":
+    if str(event.sender_id) in ALLOWED_USERS:
         uptime = get_system_uptime()
         system_info_output = get_system_info_output()
         refresh_button = Button.inline("Refresh", b"refresh")
         info_button = Button.inline("Info", b"info")
         help_button = Button.inline("Help", b"help")
-        delete_button = Button.inline("Delete", b"delete")
+        buttons = [[refresh_button, info_button, help_button]]
+        sent_message = await event.respond(system_info_output, buttons=buttons)
+        sent_messages[event.chat_id] = sent_message
+    else:
+        user_id = event.sender_id
+        await client.send_message(user_id, "You are not allowed to use this bot.")
 
-        buttons = [[refresh_button, info_button], [help_button, delete_button]]
+@client.on(events.InlineQuery)
+async def inline_query_handler(event):
+    if str(event.sender_id) in ALLOWED_USERS:
+        query = event.text.strip()
+        if query == "status":
+            uptime = get_system_uptime()
+            system_info_output = get_system_info_output()
+            refresh_button = Button.inline("Refresh", b"refresh")
+            info_button = Button.inline("Info", b"info")
+            help_button = Button.inline("Help", b"help")
 
-        result = await event.builder.article(
-            title="Status Info",
-            description="Showserver status info.",
-            text=system_info_output,
-            buttons=buttons
-        )
-        await event.answer([result])
+            buttons = [[refresh_button, info_button, help_button]]
 
+            result = await event.builder.article(
+                title="Status Info",
+                description="Show server status info.",
+                text=system_info_output,
+                buttons=buttons
+            )
+            await event.answer([result])
+        else:
+            await event.answer([])  # No results for unrecognized queries
+    else:
+        user_id = event.sender_id
+        await client.send_message(user_id, "You are not allowed to use this bot.")
 
 @client.on(events.CallbackQuery())
 async def callback_handler(event):
@@ -210,70 +191,69 @@ async def callback_handler(event):
         await refresh_handler(event)
     elif callback_data == "info":
         await info_handler(event)
-    elif callback_data == "delete":
-        await delete_handler(event)
     elif callback_data == "help":
         await help_handler(event)
 
-
 async def help_handler(event):
-    help_text = (
-        "This bot provides server status information. Use the following commands:\n"
-    )
-    help_text += "/start - Start the bot and see a welcome message\n"
-    help_text += "/status - Get the current server status"
+    if str(event.sender_id) in ALLOWED_USERS:
+        help_text = (
+            "This bot provides server status information. Use the following commands:\n"
+        )
+        help_text += "/start - Start the bot and see a welcome message\n"
+        help_text += "/status - Get the current server status"
+        refresh_button = Button.inline("Home", b"refresh")
+        info_button = Button.inline("Info", b"info")
 
-    refresh_button = Button.inline("Home", b"refresh")
-    info_button = Button.inline("Info", b"info")
-    delete_button = Button.inline("Delete", b"delete")
-
-    [[refresh_button, info_button], [delete_button]]
-
-    await event.edit(
-        help_text, buttons=[[refresh_button, info_button], [delete_button]]
-    )
-
+        [[refresh_button, info_button]]
+        await event.edit(
+            help_text, buttons=[[refresh_button, info_button]]
+        )
+    else:
+        user_id = event.sender_id
+        await client.send_message(user_id, "You are not allowed to use this bot.")
 
 async def refresh_handler(event):
-    system_info_output = get_system_info_output()
-    refresh_button = Button.inline("Refresh", b"refresh")
-    info_button = Button.inline("Info", b"info")
-    help_button = Button.inline("Help", b"help")
-    delete_button = Button.inline("Delete", b"delete")
+    if str(event.sender_id) in ALLOWED_USERS:
+        system_info_output = get_system_info_output()
+        refresh_button = Button.inline("Refresh", b"refresh")
+        info_button = Button.inline("Info", b"info")
+        help_button = Button.inline("Help", b"help")
 
-    current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    server_info_with_timestamp = f"{system_info_output}\n\nLast Refreshed: {current_timestamp}"
+        buttons = [[refresh_button, info_button, help_button]]
 
-    await event.edit(
-        server_info_with_timestamp,
-        buttons=[[refresh_button, info_button], [help_button, delete_button]],
-    )
+        current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        server_info_with_timestamp = f"{system_info_output}\n\nLast Refreshed: {current_timestamp}"
 
+        await event.edit(
+            server_info_with_timestamp,
+            buttons=buttons,
+        )
+    else:
+        user_id = event.sender_id
+        await client.send_message(user_id, "You are not allowed to use this bot.")
 
 async def info_handler(event):
-    uname = platform.uname()
-    softw = "**System Information**\n"
-    softw += f"`System   : {uname.system}`\n"
-    softw += f"`Release  : {uname.release}`\n"
-    softw += f"`Version  : {uname.version}`\n"
-    softw += f"`Machine  : {uname.machine}`\n"
+    if str(event.sender_id) in ALLOWED_USERS:
+        uname = platform.uname()
+        softw = "**System Information**\n"
+        softw += f"`System   : {uname.system}`\n"
+        softw += f"`Release  : {uname.release}`\n"
+        softw += f"`Version  : {uname.version}`\n"
+        softw += f"`Machine  : {uname.machine}`\n"
 
-    uptime = get_system_uptime()
-    softw += f"`Uptime   : {uptime}`\n"
+        uptime = get_system_uptime()
+        softw += f"`Uptime   : {uptime}`\n"
 
-    refresh_button = Button.inline("Home", b"refresh")
-    help_button = Button.inline("Help", b"help")
-    delete_button = Button.inline("Delete", b"delete")
+        refresh_button = Button.inline("Home", b"refresh")
+        help_button = Button.inline("Help", b"help")
 
-    buttons = [[refresh_button], [help_button, delete_button]]
+        buttons = [[refresh_button, help_button]]
 
-    sent_message = await event.edit(softw, buttons=buttons)
-    sent_messages[event.chat_id] = sent_message
-
-
-async def delete_handler(event):
-    await event.delete()
-
+        sent_message = await event.edit(softw, buttons=buttons)
+        sent_messages[event.chat_id] = sent_message
+    else:
+        user_id = event.sender_id
+        await client.send_message(user_id, "You are not allowed to use this bot.")
 
 # Run the client until disconnected
 client.run_until_disconnected()
