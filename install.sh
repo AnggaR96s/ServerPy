@@ -34,7 +34,7 @@ else
 fi
 
 # Install required Python packages from requirements.txt
-pip3 install -r "$REPO_DIR/requirements.txt"
+pip3 install -r "$REPO_DIR/requirements.txt" --break-system-packages
 
 # Set the script name to server.py
 SCRIPT_NAME="server.py"
